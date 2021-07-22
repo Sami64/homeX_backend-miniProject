@@ -1,78 +1,85 @@
 const db = require("../utils/db");
+const { v4: uuidv4 } = require("uuid");
+const { success, error } = require("../utils/responseApi");
 
 exports.getServices = async (req, res) => {
-  const { rows } = await db.query("SELECT * from services");
-  //console.log(rows[0]['sellerid']);
-  //res.send(rows);
+  const { rows } = await db.query(
+    "SELECT * from services inner join sellers on services.sellerID = sellers.pk inner join categories on services.categoryID = categories.pk"
+  );
+  let complete;
 
   let services = [];
+  //console.log(rows)
   rows.forEach((service, index) => {
-    //console.log(service);
-    //console.log(`index ${index}`);
     let responseService = {
       pk: service.pk,
       serviceName: service.servicename,
       serviceDescription: service.servicedescription,
+      category: service.categoryname,
+      sellerName: service.sellername,
     };
-
-    console.log(responseService);
     services.push(responseService);
+    complete = true;
   });
 
-  res.send(services)
-
-  // res.send([
-  //   {
-  //     pk: "1244",
-  //     name: "AAA Plumber Services",
-  //     description: "some plumbing service",
-  //     features: ["refund", "free fitting"],
-  //   },
-  //   {
-  //     pk: "1242",
-  //     name: "AAA Carpentry Services",
-  //     description: "some carpentry service",
-  //     features: ["free polishing", "free fitting"],
-  //   },
-  // ]);
+  if (complete) {
+    res.status(200).json(success("Success", services, res.statusCode));
+  } else {
+    res.status(404).json(error("Not Found", [], res.statusCode));
+  }
 };
 
 exports.getServiceDetail = async (req, res) => {
   // Get service id
   const id = req.params.serviceId;
-  const result = await db.query("SELECT * FROM services WHERE pk = id", [id]);
+  const { rows } = await db.query(
+    "SELECT * FROM services inner join sellers on services.sellerID = sellers.pk inner join categories on services.categoryID = categories.pk where services.pk = $1",
+    [id]
+  );
 
-  res.send({
-    pk: "1244",
-    name: "AAA Plumber Services",
-    description: "The description",
-    features: ["the feature one", "the feature two"],
-    seller: {
-      name: "Khae",
-      age: "20",
-      phone: "0552344568",
-      email: "j@gmail.com",
-    },
-    category: "plumbing",
-  });
+  const responseService = {
+    pk: rows[0].pk,
+    serviceName: rows[0].servicename,
+    serviceDescription: rows[0].servicedescription,
+    features: rows[0].features,
+    category: rows[0].categoryname,
+    sellerName: rows[0].sellername,
+    sellerPhoneNo: rows[0].phoneno,
+    sellerEmail: rows[0].email,
+  };
+
+  if (responseService !== undefined)
+    res.status(200).json(success("Success", responseService, res.statusCode));
 };
 
 exports.orderService = async (req, res) => {
   console.log(req.body);
-  res.send({
-    orderId: "",
-    service: {},
-    user: { name: "user plumb", phone: "0552421134", email: "j@j.com" },
-  });
+  const user = req.body.user;
+  const service = req.body.service;
+
+  const order = {
+    orderID: uuidv4(),
+    serviceID: service.pk,
+    userID: user.pk,
+  };
+  const { rows } = await db.query(
+    "INSERT INTO orders(orderno,serviceid,clientid) VALUES ($1,$2,$3)",
+    [order.orderID, order.serviceID, order.userID]
+  );
+
+ // console.log(rows);
+
+  //res.send(order);
+  res.status(200).json(success("Success", rows, res.statusCode));
 };
 
 exports.getOrders = async (req, res) => {
-  const result = await db.query("SELECT * FROM orders");
-  res.send([
-    {
-      orderId: "",
-      service: {},
-      user: { name: "user plumb", phone: "0552421134", email: "" },
-    },
-  ]);
+  const { rows } = await db.query(
+    "SELECT * FROM orders inner join services on orders.serviceID = services.pk inner join client on orders.clientID = client.pk where client.pk = 1"
+  );
+
+  //console.log(results);
+
+  //res.send(rows);
+  res.status(200).json(success("Success", rows, res.statusCode));
 };
