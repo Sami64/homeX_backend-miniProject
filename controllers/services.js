@@ -78,12 +78,18 @@ exports.orderService = async (req, res) => {
     serviceID: service,
     userID: user,
     dateplaced: new Date().toISOString.slice(0, 10),
-    status: 'processing'
+    status: "processing",
   };
 
   const results = await db.query(
     "INSERT INTO orders(serviceid,clientid, orderno, dateplaced, status) VALUES ($1,$2,$3,$4, $5)",
-    [order.serviceID, order.userID, order.orderNo, order.dateplaced, order.status]
+    [
+      order.serviceID,
+      order.userID,
+      order.orderNo,
+      order.dateplaced,
+      order.status,
+    ]
   );
 
   console.log(results);
@@ -157,5 +163,13 @@ exports.completeService = async (req, res) => {
     res.status(200).json(rows);
   } catch (error) {
     res.status(500).json(error("Something went wrong", res.statusCode));
+  }
+};
+
+exports.getNearby = async (req, res) => {
+  try {
+    const { rows } = await db.query("SELECT * from nearby");
+  } catch (error) {
+    res.status(400).json(error("Something went wrong", res.statusCode));
   }
 };
