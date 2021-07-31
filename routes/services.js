@@ -6,11 +6,15 @@ const {
   getServiceDetail,
   orderService,
   getOrders,
+  getCategories,
+  getCompleted,
 } = require("../controllers/services");
 
-router.get("/", getServices);
+router.get("/categories/:categoryId", getServices);
+router.get("/categories", getCategories);
 router.get("/service/:serviceId", getServiceDetail);
-router.get('/orders', getOrders);
-router.post('/order', orderService);
+router.get("/orders/:clientID", getOrders);
+router.get("/orders-completed/:clientID", getCompleted);
+router.post("/order", orderService);
 
 module.exports = router;
