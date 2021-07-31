@@ -78,11 +78,12 @@ exports.orderService = async (req, res) => {
     serviceID: service,
     userID: user,
     dateplaced: new Date().toISOString.slice(0, 10),
+    status: 'processing'
   };
 
   const results = await db.query(
-    "INSERT INTO orders(serviceid,clientid, orderno, dateplaced) VALUES ($1,$2,$3,$4)",
-    [order.serviceID, order.userID, order.orderNo, order.dateplaced]
+    "INSERT INTO orders(serviceid,clientid, orderno, dateplaced, status) VALUES ($1,$2,$3,$4, $5)",
+    [order.serviceID, order.userID, order.orderNo, order.dateplaced, order.status]
   );
 
   console.log(results);
