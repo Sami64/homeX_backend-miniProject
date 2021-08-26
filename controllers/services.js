@@ -50,7 +50,7 @@ exports.getServiceDetail = async (req, res) => {
   );
 
   const responseService = {
-    pk: rows[0].pk,
+    pk: rows[0].servicespk,
     serviceName: rows[0].servicename,
     serviceDescription: rows[0].servicedescription,
     features: rows[0].features,
@@ -59,7 +59,7 @@ exports.getServiceDetail = async (req, res) => {
     seller: {
       sellerName: rows[0].sellername,
       sellerPhoneNo: rows[0].phoneno,
-      sellerEmail: rows[0].email,
+      email: rows[0].email,
       sellerQualification: rows[0].qualification,
       sellerAddress: rows[0].address,
     },
@@ -69,54 +69,63 @@ exports.getServiceDetail = async (req, res) => {
 };
 
 exports.orderService = async (req, res) => {
-  console.log(req.body);
-  const user = req.body.clientID;
-  const service = req.body.serviceID;
+  try {
+    console.log(req.body);
+    const user = req.body.clientID;
+    const service = req.body.serviceID;
 
-  const order = {
-    orderNo: uuidv4(),
-    serviceID: service,
-    userID: user,
-    dateplaced: new Date().toISOString.slice(0, 10),
-    status: "processing",
-  };
+    const order = {
+      orderNo: uuidv4(),
+      serviceID: service,
+      userID: user,
+      dateplaced: new Date().toISOString().slice(0, 10),
+      status: "processing",
+    };
 
-  const results = await db.query(
-    "INSERT INTO orders(serviceid,clientid, orderno, dateplaced, status) VALUES ($1,$2,$3,$4, $5)",
-    [
-      order.serviceID,
-      order.userID,
-      order.orderNo,
-      order.dateplaced,
-      order.status,
-    ]
-  );
+    console.log(order);
 
-  console.log(results);
+    const results = await db.query(
+      "INSERT INTO orders(serviceid,clientid, orderno, dateplaced, status) VALUES ($1,$2,$3,$4, $5)",
+      [
+        order.serviceID,
+        order.userID,
+        order.orderNo,
+        order.dateplaced,
+        order.status,
+      ]
+    );
 
-  res.status(200).json(order);
+    console.log(results);
+
+    res.status(200).json(order);
+  } catch (error) {
+    res.status(500).json(error("Something went wrong", res.statusCode));
+  }
 };
 
 exports.getOrders = async (req, res) => {
   const clientID = req.params.clientID;
 
   const { rows } = await db.query(
-    "SELECT * FROM orders inner join services on orders.serviceID = services.servicespk inner join client on orders.clientID = client.clientpk where client.clientpk = $1 AND status = 'processing'",
+    "SELECT * FROM orders inner join services on orders.serviceID = services.servicespk inner join client on orders.clientID = client.clientpk inner join sellers on services.sellerID = sellers.sellerspk where client.clientpk = $1 AND status = 'processing'",
     [clientID]
   );
 
   let orders = [];
 
   rows.forEach((order, index) => {
+    console.log(order);
     let responseOrder = {
       orderid: order.orderid,
       orderno: order.orderno,
       servicename: order.servicename,
       dateplaced: order.dateplaced,
       seller: {
-        sellername: order.sellername,
+        sellerName: order.sellername,
       },
     };
+
+    responseOrder.dateplaced.toISOString().slice(0, 10);
 
     orders.push(responseOrder);
   });
@@ -168,7 +177,38 @@ exports.completeService = async (req, res) => {
 
 exports.getNearby = async (req, res) => {
   try {
-    const { rows } = await db.query("SELECT * from nearby");
+    const { latitude, longitude } = req.body;
+    const distanceFilter = 0.5;
+
+    const results = await db.query(
+      `SELECT * FROM (
+    SELECT *, 
+        (
+            (
+                (
+                    acos(     
+                        sin(( $1 * pi() / 180))
+                        *                                     
+                        sin(( latitude * pi() / 180)) + cos(( $1 * pi() /180 ))
+                        *                                      
+                        cos(( latitude * pi() / 180)) * cos((( $2 - longitude) * pi()/180)))
+                ) * 180/pi()
+            ) * 60 * 1.1515 * 1.609344
+        )
+    as distance FROM nearby
+) nearby
+inner join services on nearby.serviceID = services.servicespk
+inner join sellers on nearby.sellerID = sellers.sellerspk
+WHERE distance <= $3
+LIMIT 15`,
+      [latitude, longitude, distanceFilter]
+    );
+
+    if (results.rowCount > 0) {
+      res.status(200).json(results.rows);
+    } else {
+      res.status(404).json(error("No nearby services", res.statusCode));
+    }
   } catch (error) {
     res.status(400).json(error("Something went wrong", res.statusCode));
   }

@@ -1,6 +1,6 @@
 const db = require("../utils/db");
 const { error } = require("../utils/responseApi");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 
 exports.signUp = async (req, res) => {
   try {
@@ -17,7 +17,7 @@ exports.signUp = async (req, res) => {
     }
     //const user = { email, password, name, address, phoneNumber };
 
-    bcrypt.hash(password, 20, async (err, hash) => {
+    bcrypt.hash(password, 12, async (err, hash) => {
       const user = { email, pass: hash, address, phoneNumber, name };
       console.log(user);
       await db.query(
@@ -26,11 +26,12 @@ exports.signUp = async (req, res) => {
       );
     });
 
-    const user = await db.query("SELECT * from client where email = $1", [
+    const { rows } = await db.query("SELECT * from client where email = $1", [
       email,
     ]);
+    //const user = rows[0];
 
-    res.status(200).json(user.rows[0]);
+    res.status(200).json(rows[0]);
   } catch (err) {
     res.status(500).json(error("Something went wrong", res.statusCode));
   }
@@ -45,15 +46,43 @@ exports.login = async (req, res) => {
     ]);
 
     if (findUser.rowCount < 1) {
+      console.log("no user");
       res.status(404).json(error("User Not Found", res.statusCode));
-      return;
+      //return;
     }
+    console.log("comparing");
 
-    const match = await bcrypt.compare(password, findUser.rows[0].pass);
-    if (match) {
-      res.status(200).json(findUser.rows[0]);
+    bcrypt.compare(password, findUser.rows[0].pass, (err, result) => {
+      console.log("compare function");
+      if (result == true) {
+        console.log("match");
+        res.status(200).json(findUser.rows[0]);
+        //return;
+      } else {
+        res.status(400).json(error("Authentication Error", res.statusCode));
+      }
+    });
+  } catch (err) {
+    res.status(500).json(error("Something went wrong", res.statusCode));
+  }
+};
+
+exports.getUserData = async (req, res) => {
+  try {
+    let token = req.headers.authorization;
+    token = token.slice(7);
+    console.log(`The Token ${token}`);
+    const results = await db.query("SELECT * from client WHERE clientpk = $1", [
+      token,
+    ]);
+    if (results.rowCount > 0) {
+      const user = results.rows[0];
+      res.status(200).json(user);
+    } else {
+      res.status(404).json(error("User Not Found", res.statusCode));
     }
   } catch (err) {
+    console.log(err);
     res.status(500).json(error("Something went wrong", res.statusCode));
   }
 };
