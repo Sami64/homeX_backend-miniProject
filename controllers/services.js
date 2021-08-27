@@ -5,12 +5,18 @@ const { success, error } = require("../utils/responseApi");
 exports.getCategories = async (req, res) => {
   try {
     const { rows } = await db.query("SELECT * from categories");
+    console.log(process.env.DATABASE_URL);
 
     res.status(200).json(rows);
   } catch (errorMes) {
     res
       .status(500)
-      .json(error(`Something went wrong: ${errorMes}`, res.statusCode));
+      .json(
+        error(
+          `Something went wrong: ${errorMes}: DBURL -> ${process.env.DATABASE_URL}`,
+          res.statusCode
+        )
+      );
   }
 };
 
