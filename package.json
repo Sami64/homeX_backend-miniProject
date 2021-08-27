@@ -4,6 +4,9 @@
   "main": "app.js",
   "author": "Sami",
   "license": "MIT",
+  "engines": {
+    "node": "16.4.1"
+  },
   "scripts": {
     "dev": "nodemon app.js",
     "start": "node app.js"

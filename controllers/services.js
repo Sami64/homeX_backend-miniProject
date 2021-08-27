@@ -8,7 +8,9 @@ exports.getCategories = async (req, res) => {
 
     res.status(200).json(rows);
   } catch (errorMes) {
-    res.status(500).json(error("Something went wrong", res.statusCode));
+    res
+      .status(500)
+      .json(error(`Something went wrong: ${errorMes}`, res.statusCode));
   }
 };
 
